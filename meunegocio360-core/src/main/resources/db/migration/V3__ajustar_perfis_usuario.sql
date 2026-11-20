@@ -1,0 +1,5 @@
+ALTER TABLE usuario MODIFY perfil VARCHAR(30) NOT NULL;
+
+UPDATE usuario
+SET perfil = 'OPERADOR_COMERCIAL'
+WHERE perfil = 'USUARIO';

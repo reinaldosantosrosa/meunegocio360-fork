@@ -1,6 +1,7 @@
 package br.com.meunegocio360.core.shared.error;
 
 import br.com.meunegocio360.core.auth.api.RefreshCookie;
+import br.com.meunegocio360.core.empresa.domain.ErroEmpresa;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -56,6 +58,13 @@ public class ProblemAdvice {
         HttpStatus.valueOf(erro.getStatus()));
   }
 
+  @ExceptionHandler(ErroEmpresa.class)
+  public ResponseEntity<ProblemResponse> tratarEmpresa(
+      ErroEmpresa erro, HttpServletRequest request) {
+    return resposta(
+        request, erro.getStatus(), erro.getCode(), erro.getTitle(), erro.getMessage(), List.of());
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ProblemResponse> tratarValidacao(
       MethodArgumentNotValidException erro, HttpServletRequest request) {
@@ -80,6 +89,18 @@ public class ProblemAdvice {
         "Dados inválidos",
         "Um ou mais campos são inválidos.",
         List.of(new ProblemResponse.FieldValidationError("body", "deve conter um JSON válido")));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ProblemResponse> tratarAcessoNegado(
+      AccessDeniedException erro, HttpServletRequest request) {
+    return resposta(
+        request,
+        403,
+        "ACCESS_DENIED",
+        "Acesso negado",
+        "Você não tem permissão para acessar este recurso.",
+        List.of());
   }
 
   @ExceptionHandler(Exception.class)

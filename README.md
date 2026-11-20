@@ -167,7 +167,7 @@ Scripts de teste serão acrescentados na fase de testes (ver [Contribuições](#
 
 ### Verificação manual da autenticação no Postman (RF-BE-001)
 
-1. Copie `.env.example` para `.env` e preencha `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET` (ao menos 32 bytes) e as duas senhas `SEED_*` (8 a 72 caracteres). Para testar por HTTP local, configure `APP_AUTH_COOKIE_SECURE=false`; essa opção só é permitida no perfil `dev`.
+1. Copie `.env.example` para `.env` e preencha `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET` (ao menos 32 bytes) e as três senhas `SEED_*` (8 a 72 caracteres). Para testar por HTTP local, configure `APP_AUTH_COOKIE_SECURE=false`; essa opção só é permitida no perfil `dev`.
 2. Execute `docker compose up -d` e inicie o backend com o perfil `dev`. Crie um ambiente Postman com `baseUrl=http://localhost:8080` e `accessToken` vazio.
 3. Envie `POST {{baseUrl}}/api/v1/auth/login`, com `Content-Type: application/json` e corpo `{"email":"admin@meunegocio360.com.br","senha":"{{senhaAdmin}}"}`. Guarde a senha de seed em variável local/secret do Postman. Verifique `200`, `tokenType`, `expiresIn` e `usuario`; o `accessToken` deve ser salvo na variável de ambiente. O refresh deve aparecer somente no cookie `mn360_refresh`.
 4. Envie `GET {{baseUrl}}/api/v1/auth/me`; na aba **Authorization**, escolha autenticação por token e informe `{{accessToken}}`. Espere `200` e os mesmos dados de `usuario`. Sem autenticação, espere `401`, `WWW-Authenticate` e `application/problem+json`.
@@ -183,6 +183,23 @@ if (pm.response.code === 200) {
   pm.environment.set("accessToken", pm.response.json().accessToken);
 }
 ```
+
+### Verificação manual da empresa no Postman (RF-BE-002)
+
+Use um ambiente com `baseUrl`, as três senhas de seed armazenadas como variáveis locais/secret, `accessToken` e `empresaId`. Faça login novamente ao trocar de perfil. A migration cria apenas a estrutura: nenhum registro de empresa é criado pelo seed.
+
+1. **ADMIN:** faça login como `admin@meunegocio360.com.br` e envie `POST {{baseUrl}}/api/v1/empresa` com `Authorization: Bearer {{accessToken}}`:
+   ```json
+   {
+     "razaoSocial": "Comércio Exemplo Ltda",
+     "cnpj": "11222333000181"
+   }
+   ```
+   Espere `201`, `Location`, `ativa: true`, `fusoHorario: "America/Sao_Paulo"` e `moeda: "BRL"`. Salve `id` e `versao` para as próximas requisições. Confira `GET {{baseUrl}}/api/v1/empresa` com `200`.
+2. **OPERADOR_COMERCIAL:** faça login como `usuario@meunegocio360.com.br`. `GET /api/v1/empresa` deve retornar `200`; tente `PATCH /api/v1/empresa/{{empresaId}}/situacao` com `{"ativa":false,"versao":{{versao}}}` e espere `403`, `code: "ACCESS_DENIED"`.
+3. **OPERADOR_FINANCEIRO:** faça login como `financeiro@meunegocio360.com.br`. `GET /api/v1/empresa` deve retornar `200`; tente o mesmo `PATCH` e espere `403`, `code: "ACCESS_DENIED"`.
+
+Como verificações adicionais do RF-BE-002, com ADMIN teste CNPJ inválido (`400`, `VALIDATION_ERROR`), cadastro com outro CNPJ enquanto já há empresa ativa (`409`, `COMPANY_ALREADY_ACTIVE`), inativação (`200`) e consulta sem empresa ativa (`404`, `COMPANY_NOT_REGISTERED`). Todas as chamadas protegidas sem token devem retornar `401`.
 
 ### Conceitos de DevOps (introdutórios)
 
