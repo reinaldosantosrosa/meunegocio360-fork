@@ -12,3 +12,6 @@ Thumbs.db
 target/
 node_modules/
 dist/
+
+# Arquivos de configuração do IDE
+.vscode/

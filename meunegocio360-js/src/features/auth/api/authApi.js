@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { apiRequest } from "../../../shared/lib/http.js";
 import { parseLoginResponse } from "./authSchema.js";
 
@@ -36,4 +37,26 @@ export function logout() {
     auth: false,
     retryOnUnauthorized: false,
   });
+=======
+import { apiRequest } from '../../../shared/lib/http.js'
+
+export function login(credentials) {
+  return apiRequest('/auth/login', {
+    method: 'POST',
+    authenticated: false,
+    retryUnauthorized: false,
+    body: {
+      email: credentials.email,
+      senha: credentials.senha,
+    },
+  })
+}
+
+export function logout() {
+  return apiRequest('/auth/logout', {
+    method: 'POST',
+    authenticated: false,
+    retryUnauthorized: false,
+  })
+>>>>>>> e2c207fd89fbc28644cb875e085f1f170624a68f
 }
