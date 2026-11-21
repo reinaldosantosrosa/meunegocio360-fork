@@ -1,6 +1,7 @@
 package br.com.meunegocio360.core.shared.error;
 
 import br.com.meunegocio360.core.auth.api.RefreshCookie;
+import br.com.meunegocio360.core.cliente.domain.ErroCliente;
 import br.com.meunegocio360.core.empresa.domain.ErroEmpresa;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -19,6 +20,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ProblemAdvice {
@@ -65,6 +67,18 @@ public class ProblemAdvice {
         request, erro.getStatus(), erro.getCode(), erro.getTitle(), erro.getMessage(), List.of());
   }
 
+  @ExceptionHandler(ErroCliente.class)
+  public ResponseEntity<ProblemResponse> tratarCliente(
+      ErroCliente erro, HttpServletRequest request) {
+    List<ProblemResponse.FieldValidationError> errors =
+        erro.getField() == null
+            ? List.of()
+            : List.of(
+                new ProblemResponse.FieldValidationError(erro.getField(), erro.getFieldMessage()));
+    return resposta(
+        request, erro.getStatus(), erro.getCode(), erro.getTitle(), erro.getMessage(), errors);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ProblemResponse> tratarValidacao(
       MethodArgumentNotValidException erro, HttpServletRequest request) {
@@ -89,6 +103,19 @@ public class ProblemAdvice {
         "Dados inválidos",
         "Um ou mais campos são inválidos.",
         List.of(new ProblemResponse.FieldValidationError("body", "deve conter um JSON válido")));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ProblemResponse> tratarParametroInvalido(
+      MethodArgumentTypeMismatchException erro, HttpServletRequest request) {
+    return resposta(
+        request,
+        400,
+        "VALIDATION_ERROR",
+        "Dados inválidos",
+        "Um ou mais campos são inválidos.",
+        List.of(
+            new ProblemResponse.FieldValidationError(erro.getName(), "contém um valor inválido")));
   }
 
   @ExceptionHandler(AccessDeniedException.class)

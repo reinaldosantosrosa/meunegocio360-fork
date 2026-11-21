@@ -25,6 +25,6 @@ public class OpenApiConfiguration {
             new Info()
                 .title("MeuNegocio360 - Núcleo")
                 .version("v1")
-                .description("API de identidade e autenticação do Núcleo."));
+                .description("API de autenticação, empresa e clientes do Núcleo."));
   }
 }

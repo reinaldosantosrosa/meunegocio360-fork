@@ -201,6 +201,16 @@ Use um ambiente com `baseUrl`, as três senhas de seed armazenadas como variáve
 
 Como verificações adicionais do RF-BE-002, com ADMIN teste CNPJ inválido (`400`, `VALIDATION_ERROR`), cadastro com outro CNPJ enquanto já há empresa ativa (`409`, `COMPANY_ALREADY_ACTIVE`), inativação (`200`) e consulta sem empresa ativa (`404`, `COMPANY_NOT_REGISTERED`). Todas as chamadas protegidas sem token devem retornar `401`.
 
+### Verificação manual de clientes no Postman (RF-BE-003)
+
+Use uma empresa ativa, as variáveis `baseUrl` e `accessToken`, e faça login novamente para trocar de perfil. Os três cenários abaixo verificam a matriz de autorização:
+
+1. **ADMIN:** `POST {{baseUrl}}/api/v1/clientes` com `{"tipoPessoa":"FISICA","nome":"Maria da Silva","documento":"529.982.247-25"}` deve retornar `201`, `Location` e o documento normalizado como `52998224725`. Guarde o `id`; consulte `GET /api/v1/clientes?q=529.982&page=0&size=20&sort=nome` e confira a estrutura paginada.
+2. **OPERADOR_COMERCIAL:** faça login como `usuario@meunegocio360.com.br`; `GET /api/v1/clientes` deve responder `200`. Atualize, inative/reative ou exclua o cliente criado como ADMIN; as operações permitidas devem respeitar `versao`.
+3. **OPERADOR_FINANCEIRO:** faça login como `financeiro@meunegocio360.com.br`; `GET /api/v1/clientes` deve responder `403` com `code: "ACCESS_DENIED"`.
+
+Verificações adicionais: documento inválido ou incompatível com `tipoPessoa` retorna `400` (`VALIDATION_ERROR`); duplicidade de documento retorna `409` (`CUSTOMER_DOCUMENT_DUPLICATE`); cliente fora da empresa ativa retorna `404` (`CUSTOMER_NOT_FOUND`); sem empresa ativa a operação retorna `422` (`COMPANY_NOT_ACTIVE`). A exclusão com histórico pode ser exercitada quando uma feature registrar um `VerificadorVinculoCliente`.
+
 ### Conceitos de DevOps (introdutórios)
 
 O foco do projeto é o desenvolvimento de software. Os conceitos de DevOps usados aqui são apenas introdutórios e já vêm prontos:
