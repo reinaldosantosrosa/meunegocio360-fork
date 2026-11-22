@@ -6,10 +6,28 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+<<<<<<< HEAD
       '/api': {
         target: 'http://localhost:8080',
+=======
+<<<<<<< HEAD
+      "/api": {
+        target: "http://localhost:8080",
+=======
+      '/api': {
+        target: 'http://localhost:8080',
+>>>>>>> e2c207fd89fbc28644cb875e085f1f170624a68f
+>>>>>>> feat/rf-be-004-cadastro-de-fornecedor
         changeOrigin: true,
       },
     },
   },
+<<<<<<< HEAD
 })
+=======
+<<<<<<< HEAD
+});
+=======
+})
+>>>>>>> e2c207fd89fbc28644cb875e085f1f170624a68f
+>>>>>>> feat/rf-be-004-cadastro-de-fornecedor
