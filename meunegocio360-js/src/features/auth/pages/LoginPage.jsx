@@ -1,32 +1,55 @@
-import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Card, Container, Form, Spinner } from "react-bootstrap";
-import { useLocation, useNavigate } from "react-router";
-import brandLogo from "../../../../../assets/logo_meunegocio360_v2_sem_fundo.png";
-import { ApiError } from "../../../shared/lib/http.js";
-import { safeInternalPath } from "../../../shared/lib/safeInternalPath.js";
-import { usePageTitle } from "../../../shared/lib/usePageTitle.js";
-import { useAuth } from "../useAuth.js";
-import { loginSchema } from "../api/authSchema.js";
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap'
+import { useForm } from 'react-hook-form'
+import { Navigate, useLocation, useNavigate } from 'react-router'
+import brandLogo from '../../../assets/logo_meunegocio360_v2_sem_fundo.png'
+import { ApiError } from '../../../shared/lib/http.js'
+import { login } from '../api/authApi.js'
+import { useAuth } from '../hooks/useAuth.js'
+import { loginSchema } from '../schemas.js'
 
-const serverFieldNames = {
-  email: "email",
-  senha: "senha",
-};
-
-function mapServerField(field) {
-  return serverFieldNames[field] || null;
+function currentTime() {
+  return Date.now()
 }
 
-export default function LoginPage() {
-  const { login } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const alertRef = useRef(null);
-  const [alertMessage, setAlertMessage] = useState("");
-  const [alertFocusCount, setAlertFocusCount] = useState(0);
-  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+function getSafeReturnPath(from) {
+  const pathname = typeof from === 'string' ? from : from?.pathname
+  if (
+    !pathname?.startsWith('/') ||
+    pathname.startsWith('//') ||
+    pathname.includes('\\')
+  ) {
+    return '/'
+  }
+
+  if (typeof from === 'object' && from !== null) {
+    return {
+      pathname,
+      search: from.search || '',
+      hash: from.hash || '',
+    }
+  }
+
+  return pathname
+}
+
+function LoginPage() {
+  const { status, acceptSession } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [alert, setAlert] = useState(() => {
+    if (location.state?.logoutError) {
+      return { type: 'logout' }
+    }
+    if (location.state?.sessionExpired) {
+      return { type: 'expired' }
+    }
+    return null
+  })
+  const [lockedUntil, setLockedUntil] = useState(null)
+  const [now, setNow] = useState(0)
   const {
     register,
     handleSubmit,
@@ -34,210 +57,224 @@ export default function LoginPage() {
     resetField,
     setError,
     setFocus,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
-    mode: "onSubmit",
-    reValidateMode: "onChange",
-    defaultValues: { email: "", senha: "" },
-    shouldFocusError: true,
-  });
-
-  usePageTitle("Entrar");
-
-  useEffect(() => {
-    if (location.state?.message) {
-      alertRef.current?.focus();
-    }
-  }, [location.state?.message]);
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
+  })
+  const mutation = useMutation({ mutationFn: login, gcTime: 0 })
+  const lockSeconds = lockedUntil
+    ? Math.max(0, Math.ceil((lockedUntil - now) / 1000))
+    : 0
+  const returnPath = getSafeReturnPath(location.state?.from)
 
   useEffect(() => {
-    if (alertFocusCount > 0) {
-      alertRef.current?.focus();
-    }
-  }, [alertFocusCount]);
-
-  const isLocked = lockoutSeconds > 0;
+    document.title = 'Entrar | MeuNegocio360'
+  }, [])
 
   useEffect(() => {
-    if (!isLocked) {
-      return undefined;
+    if (!lockedUntil) {
+      return undefined
     }
 
-    const intervalId = window.setInterval(() => {
-      setLockoutSeconds((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [isLocked]);
+    const timerId = window.setInterval(() => {
+      const currentTime = Date.now()
+      setNow(currentTime)
+      if (currentTime >= lockedUntil) {
+        setLockedUntil(null)
+        setAlert(null)
+      }
+    }, 1000)
 
-  const remainingSeconds = lockoutSeconds;
-  const lockoutMessage =
-    remainingSeconds > 0
-      ? `Muitas tentativas. Tente novamente em ${Math.ceil(remainingSeconds / 60)} ${
-          Math.ceil(remainingSeconds / 60) === 1 ? "minuto" : "minutos"
-        }.`
-      : "";
-  const visibleAlert =
-    alertMessage || lockoutMessage || location.state?.message || "";
+    return () => window.clearInterval(timerId)
+  }, [lockedUntil])
 
-  function showAlert(message, shouldFocus = true) {
-    setAlertMessage(message);
-    if (shouldFocus) {
-      setAlertFocusCount((count) => count + 1);
-    }
+  if (status === 'authenticated') {
+    return <Navigate to="/" replace />
   }
 
-  async function submit(credentials) {
-    setAlertMessage("");
-
+  const onSubmit = async (values) => {
+    setAlert(null)
     try {
-      await login(credentials);
-      reset();
-      navigate(safeInternalPath(location.state?.from), { replace: true });
+      const session = await mutation.mutateAsync(values)
+      mutation.reset()
+      acceptSession(session)
+      reset()
+      navigate(returnPath, { replace: true })
     } catch (error) {
       if (!(error instanceof ApiError)) {
-        showAlert(
-          "Não foi possível entrar agora. Verifique sua conexão e tente novamente.",
-        );
-        return;
+        setAlert({ type: 'network' })
+        return
       }
 
-      if (error.code === "VALIDATION_ERROR") {
-        let firstInvalidField = null;
-        error.errors.forEach(({ field, message }) => {
-          const fieldName = mapServerField(field);
-          if (fieldName) {
-            setError(fieldName, {
-              type: "server",
-              message: message || "Confira este campo.",
-            });
-            firstInvalidField ||= fieldName;
+      if (error.status === 401 && error.code === 'INVALID_CREDENTIALS') {
+        setAlert({ type: 'invalid' })
+        resetField('senha')
+        setFocus('senha')
+        return
+      }
+
+      if (error.status === 429 && error.code === 'ACCOUNT_TEMPORARILY_LOCKED') {
+        const seconds = error.retryAfterSeconds ?? 60
+        setLockedUntil(currentTime() + seconds * 1000)
+        setNow(currentTime())
+        setAlert({ type: 'blocked' })
+        return
+      }
+
+      if (error.status === 400 && error.code === 'VALIDATION_ERROR') {
+        const fieldMap = { email: 'email', senha: 'senha' }
+        let firstField = null
+
+        for (const fieldError of error.errors) {
+          const field = fieldMap[fieldError.field]
+          if (field && typeof fieldError.message === 'string') {
+            setError(field, { type: 'server', message: fieldError.message })
+            firstField ||= field
           }
-        });
-
-        if (firstInvalidField) {
-          setFocus(firstInvalidField);
-        } else {
-          showAlert("Confira os dados informados e tente novamente.");
         }
-        return;
+
+        if (firstField) {
+          setFocus(firstField)
+        } else {
+          setAlert({ type: 'validation' })
+        }
+        return
       }
 
-      if (error.code === "INVALID_CREDENTIALS") {
-        showAlert("E-mail ou senha inválidos.", false);
-        resetField("senha");
-        setFocus("senha");
-        return;
-      }
-
-      if (error.code === "ACCOUNT_TEMPORARILY_LOCKED") {
-        const seconds = error.retryAfter ?? 60;
-        setLockoutSeconds(seconds);
-        setAlertFocusCount((count) => count + 1);
-        return;
-      }
-
-      showAlert(
-        "Não foi possível entrar agora. Verifique sua conexão e tente novamente.",
-      );
+      setAlert({ type: 'network' })
     }
   }
 
+  const retryLogin = handleSubmit(onSubmit)
+  const emailRegistration = register('email')
+  const passwordRegistration = register('senha')
+
   return (
-    <main className="app-page d-flex align-items-center justify-content-center p-3">
-      <Container className="app-container">
-        <Card className="app-card login-card shadow-sm mx-auto">
-          <Card.Body className="p-4 p-md-5">
-            <h1 className="text-center mb-3">Entrar</h1>
-            <img className="login-brand" src={brandLogo} alt="MeuNegocio360" />
+    <main className="container auth-shell d-flex align-items-center justify-content-center py-4">
+      <Card className="auth-card shadow-sm">
+        <Card.Body className="p-4 p-md-5">
+          <div className="text-center mb-4">
+            <img
+              className="auth-brand-logo mb-3"
+              src={brandLogo}
+              alt="MeuNegocio360"
+            />
+            <h1 className="h2 mb-1">Entrar</h1>
+            <p className="text-body-secondary mb-0">
+              Acesse sua conta MeuNegocio360
+            </p>
+          </div>
 
-            {visibleAlert && (
-              <Alert
-                ref={alertRef}
-                tabIndex={-1}
-                variant="danger"
-                role="alert"
-                className="mb-4"
-              >
-                {visibleAlert}
-              </Alert>
-            )}
+          {alert && (
+            <Alert
+              variant={
+                alert.type === 'network' || alert.type === 'logout'
+                  ? 'warning'
+                  : 'danger'
+              }
+              role="alert"
+            >
+              {alert.type === 'invalid' && 'E-mail ou senha inválidos.'}
+              {alert.type === 'blocked' &&
+                `Muitas tentativas. Tente novamente em ${Math.ceil(lockSeconds / 60)} ${
+                  Math.ceil(lockSeconds / 60) === 1 ? 'minuto' : 'minutos'
+                }.`}
+              {alert.type === 'network' && (
+                <>
+                  <p className="mb-2">
+                    Não foi possível entrar agora. Verifique sua conexão e tente
+                    novamente.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline-dark"
+                    onClick={retryLogin}
+                    disabled={mutation.isPending || lockSeconds > 0}
+                  >
+                    Tentar novamente
+                  </Button>
+                </>
+              )}
+              {alert.type === 'validation' &&
+                'Revise os dados informados e tente novamente.'}
+              {alert.type === 'expired' &&
+                'Sua sessão expirou. Entre novamente.'}
+              {alert.type === 'logout' &&
+                'Não foi possível confirmar o encerramento da sessão no servidor. Entre novamente.'}
+            </Alert>
+          )}
 
-            <Form noValidate onSubmit={handleSubmit(submit)}>
-              <Form.Group className="mb-3" controlId="login-email">
-                <Form.Label>E-mail</Form.Label>
-                <Form.Control
-                  type="email"
-                  autoComplete="username"
-                  inputMode="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  isInvalid={Boolean(errors.email)}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={
-                    errors.email ? "login-email-error" : undefined
-                  }
-                  {...register("email")}
-                />
+          <Form noValidate onSubmit={retryLogin}>
+            <Form.Group className="mb-3" controlId="login-email">
+              <Form.Label>E-mail</Form.Label>
+              <Form.Control
+                {...emailRegistration}
+                type="email"
+                autoComplete="username"
+                inputMode="email"
+                isInvalid={Boolean(errors.email)}
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={
+                  errors.email ? 'login-email-error' : undefined
+                }
+                autoFocus
+              />
+              {errors.email && (
                 <Form.Control.Feedback
                   id="login-email-error"
-                  role="alert"
                   type="invalid"
+                  role="alert"
                 >
-                  {errors.email?.message}
+                  {errors.email.message}
                 </Form.Control.Feedback>
-              </Form.Group>
+              )}
+            </Form.Group>
 
-              <Form.Group className="mb-4" controlId="login-password">
-                <Form.Label>Senha</Form.Label>
-                <Form.Control
-                  type="password"
-                  autoComplete="current-password"
-                  isInvalid={Boolean(errors.senha)}
-                  aria-invalid={Boolean(errors.senha)}
-                  aria-describedby={
-                    errors.senha ? "login-password-error" : undefined
-                  }
-                  {...register("senha")}
-                />
+            <Form.Group className="mb-4" controlId="login-password">
+              <Form.Label>Senha</Form.Label>
+              <Form.Control
+                {...passwordRegistration}
+                type="password"
+                autoComplete="current-password"
+                isInvalid={Boolean(errors.senha)}
+                aria-invalid={Boolean(errors.senha)}
+                aria-describedby={
+                  errors.senha ? 'login-password-error' : undefined
+                }
+              />
+              {errors.senha && (
                 <Form.Control.Feedback
                   id="login-password-error"
-                  role="alert"
                   type="invalid"
+                  role="alert"
                 >
-                  {errors.senha?.message}
+                  {errors.senha.message}
                 </Form.Control.Feedback>
-              </Form.Group>
-
-              <Button
-                className="w-100"
-                type="submit"
-                disabled={isSubmitting || remainingSeconds > 0}
-                aria-describedby={lockoutMessage ? "login-lockout" : undefined}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Spinner
-                      animation="border"
-                      size="sm"
-                      className="me-2"
-                      aria-hidden="true"
-                    />
-                    Entrando...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
-              </Button>
-              {lockoutMessage && (
-                <span id="login-lockout" className="visually-hidden">
-                  {lockoutMessage}
-                </span>
               )}
-            </Form>
-          </Card.Body>
-        </Card>
-      </Container>
+            </Form.Group>
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-100"
+              disabled={mutation.isPending || lockSeconds > 0}
+            >
+              {mutation.isPending ? (
+                <>
+                  <Spinner size="sm" animation="border" aria-hidden="true" />{' '}
+                  Entrando...
+                </>
+              ) : (
+                'Entrar'
+              )}
+            </Button>
+          </Form>
+        </Card.Body>
+      </Card>
     </main>
-  );
+  )
 }
+
+export default LoginPage
