@@ -3,10 +3,14 @@ package br.com.meunegocio360.core.empresa.infra.persistence;
 import br.com.meunegocio360.core.empresa.domain.ConflitoEmpresa;
 import br.com.meunegocio360.core.empresa.domain.Empresa;
 import br.com.meunegocio360.core.empresa.domain.EmpresaRepositorio;
+import br.com.meunegocio360.core.empresa.domain.PaginaEmpresas;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -36,6 +40,20 @@ public class EmpresaRepositorioJpa implements EmpresaRepositorio {
   @Override
   public Optional<Empresa> buscarPorCnpj(String cnpj) {
     return repository.findByCnpj(cnpj);
+  }
+
+  @Override
+  public PaginaEmpresas listarInativas(int page, int size) {
+    Page<Empresa> resultado =
+        repository.findByAtivaFalse(
+            PageRequest.of(
+                page, size, Sort.by(Sort.Order.desc("atualizadoEm"), Sort.Order.desc("id"))));
+    return new PaginaEmpresas(
+        resultado.getContent(),
+        resultado.getNumber(),
+        resultado.getSize(),
+        resultado.getTotalElements(),
+        resultado.getTotalPages());
   }
 
   @Override

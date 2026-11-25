@@ -3,10 +3,13 @@ package br.com.meunegocio360.core.empresa.application;
 import br.com.meunegocio360.core.empresa.api.AlterarSituacaoEmpresaRequest;
 import br.com.meunegocio360.core.empresa.api.AtualizarEmpresaRequest;
 import br.com.meunegocio360.core.empresa.api.CriarEmpresaRequest;
+import br.com.meunegocio360.core.empresa.api.EmpresaInativaResponse;
 import br.com.meunegocio360.core.empresa.api.EmpresaResponse;
+import br.com.meunegocio360.core.empresa.api.PaginaEmpresaResponse;
 import br.com.meunegocio360.core.empresa.domain.ConflitoEmpresa;
 import br.com.meunegocio360.core.empresa.domain.Empresa;
 import br.com.meunegocio360.core.empresa.domain.EmpresaRepositorio;
+import br.com.meunegocio360.core.empresa.domain.PaginaEmpresas;
 import br.com.meunegocio360.core.shared.error.ErroDeNegocio;
 import java.time.Clock;
 import java.util.UUID;
@@ -37,6 +40,18 @@ public class EmpresaService {
                     "COMPANY_NOT_REGISTERED",
                     "Empresa não cadastrada",
                     "Nenhuma empresa ativa está cadastrada."));
+  }
+
+  @Transactional(readOnly = true)
+  public PaginaEmpresaResponse<EmpresaInativaResponse> listarInativas(int page, int size) {
+    validarPaginacao(page, size);
+    PaginaEmpresas resultado = empresaRepositorio.listarInativas(page, size);
+    return new PaginaEmpresaResponse<>(
+        resultado.content().stream().map(EmpresaService::respostaInativa).toList(),
+        resultado.page(),
+        resultado.size(),
+        resultado.totalElements(),
+        resultado.totalPages());
   }
 
   @Transactional
@@ -142,6 +157,16 @@ public class EmpresaService {
     }
   }
 
+  private static void validarPaginacao(int page, int size) {
+    if (page < 0 || size < 1 || size > 100) {
+      throw new ErroDeNegocio(
+          400,
+          "VALIDATION_ERROR",
+          "Dados inválidos",
+          "page deve ser maior ou igual a 0 e size deve estar entre 1 e 100.");
+    }
+  }
+
   private static ErroDeNegocio traduzir(ConflitoEmpresa conflito) {
     return switch (conflito.getTipo()) {
       case CNPJ_DUPLICADO -> cnpjDuplicado();
@@ -186,6 +211,15 @@ public class EmpresaService {
         empresa.isAtiva(),
         empresa.getCriadoEm(),
         empresa.getAtualizadoEm(),
+        empresa.getVersao());
+  }
+
+  private static EmpresaInativaResponse respostaInativa(Empresa empresa) {
+    return new EmpresaInativaResponse(
+        empresa.getId(),
+        empresa.getRazaoSocial(),
+        empresa.getNomeFantasia(),
+        empresa.getCnpj(),
         empresa.getVersao());
   }
 }

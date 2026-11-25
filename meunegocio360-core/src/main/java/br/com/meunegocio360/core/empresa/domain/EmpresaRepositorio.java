@@ -13,5 +13,7 @@ public interface EmpresaRepositorio {
 
   Optional<Empresa> buscarPorCnpj(String cnpj);
 
+  PaginaEmpresas listarInativas(int page, int size);
+
   Empresa salvar(Empresa empresa);
 }

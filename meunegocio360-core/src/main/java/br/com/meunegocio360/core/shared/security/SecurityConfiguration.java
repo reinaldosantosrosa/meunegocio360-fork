@@ -84,7 +84,7 @@ public class SecurityConfiguration {
     }
     allowedOrigins.forEach(SecurityConfiguration::validarOrigem);
     configuration.setAllowedOrigins(allowedOrigins);
-    configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"));
     configuration.setExposedHeaders(List.of("X-Request-Id", "Retry-After", "WWW-Authenticate"));
     configuration.setAllowCredentials(true);

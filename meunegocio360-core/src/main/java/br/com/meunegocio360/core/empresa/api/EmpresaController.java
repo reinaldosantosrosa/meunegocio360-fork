@@ -3,6 +3,7 @@ package br.com.meunegocio360.core.empresa.api;
 import br.com.meunegocio360.core.empresa.application.EmpresaService;
 import br.com.meunegocio360.core.shared.error.ProblemResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -65,6 +67,42 @@ public class EmpresaController {
   })
   public EmpresaResponse consultar() {
     return empresaService.consultarAtiva();
+  }
+
+  @GetMapping("/inativas")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Listar empresas inativas paginadas para o administrador.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Página de empresas inativas.",
+        content = @Content(schema = @Schema(implementation = PaginaEmpresaResponse.class))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Parâmetros de paginação inválidos.",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemResponse.class),
+                examples =
+                    @ExampleObject(value = "{\"code\":\"VALIDATION_ERROR\",\"status\":400}"))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Somente ADMIN pode consultar empresas inativas.",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemResponse.class),
+                examples = @ExampleObject(value = "{\"code\":\"ACCESS_DENIED\",\"status\":403}")))
+  })
+  public PaginaEmpresaResponse<EmpresaInativaResponse> listarInativas(
+      @Parameter(description = "Índice da página, começando em zero.")
+          @RequestParam(defaultValue = "0")
+          int page,
+      @Parameter(description = "Quantidade por página, entre 1 e 100.")
+          @RequestParam(defaultValue = "20")
+          int size) {
+    return empresaService.listarInativas(page, size);
   }
 
   @PostMapping
