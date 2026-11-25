@@ -230,6 +230,16 @@ Corpo de exemplo para cadastro:
 
 Para validar a exigência de empresa ativa em ambiente de desenvolvimento, inative temporariamente a empresa pelo endpoint de RF-BE-002 e tente cadastrar cliente: a resposta esperada é `422 COMPANY_NOT_ACTIVE`. Reative a empresa antes de continuar os fluxos acima. A exclusão com histórico será exercitada quando existirem vínculos de vendas ou OS; até lá, a interface de verificação de vínculos permite integração sem acoplar features.
 
+### Catálogo de produtos e serviços no Postman (RF-BE-005)
+
+Pré-requisitos: migrations V1–V7 aplicadas, empresa ativa cadastrada, aplicação em `dev` e Postman configurado com `baseUrl=http://localhost:8080`. Para cada teste, autentique-se por `POST {{baseUrl}}/api/v1/auth/login` com a conta do perfil e envie o `accessToken` no cabeçalho Bearer. Use as senhas configuradas em variáveis locais/secretas; não as salve em coleções compartilhadas. A empresa é resolvida no servidor e não deve ser enviada nos corpos.
+
+1. **ADMIN — categorias e itens:** crie categoria com `POST /api/v1/categorias` e corpo `{"nome":"Informática"}`; espere `201` e salve `id`/`versao`. Crie um produto com `POST /api/v1/itens-catalogo` e corpo `{"tipo":"PRODUTO","codigo":"MSE-01","nome":"Mouse sem fio","preco":"89.90","categoriaId":"{{categoriaId}}"}`. Espere `201`, `Location`, `unidade:"UN"`, `preco:"89.90"` como string e ausência de `estoqueMinimo`; salve `id` e `versao`. Consulte `GET /api/v1/itens-catalogo?tipo=PRODUTO&categoriaId={{categoriaId}}` e confirme que todos os resultados são produtos daquela categoria. Atualize com `PUT /api/v1/itens-catalogo/{{itemId}}` e corpo `{"tipo":"PRODUTO","codigo":"MSE-01","nome":"Mouse sem fio","descricao":"Mouse óptico sem fio","unidade":"UN","preco":"99.90","categoriaId":"{{categoriaId}}","versao":<versao-atual>}`; confirme incremento da versão. Reenvie a versão antiga e espere `409 VERSION_CONFLICT`. Tente excluir a categoria ainda vinculada: espere `422 CATEGORY_IN_USE`; inative-a com `PATCH /api/v1/categorias/{{categoriaId}}/situacao` e `{"ativo":false,"versao":<versao-atual>}`. Os corpos com preço negativo, `"10,5"` ou `"abc"` devem retornar `400 VALIDATION_ERROR` com erro no campo `preco`.
+2. **OPERADOR_COMERCIAL — cadastro de serviço e busca:** crie um serviço com `POST /api/v1/itens-catalogo` e corpo `{"tipo":"SERVICO","nome":"Formatação de notebook","preco":"150.00"}`. Espere `201` e `unidade:"H"`; salve `id`/`versao`. Consulte `GET /api/v1/itens-catalogo?tipo=SERVICO&q=formatação` e confirme que apenas serviços correspondentes são retornados. Tente alterar `tipo` para `PRODUTO` por `PUT /api/v1/itens-catalogo/{{itemId}}`, enviando `{"tipo":"PRODUTO","nome":"Formatação de notebook","unidade":"H","preco":"150.00","versao":<versao-atual>}`; espere `422 ITEM_TYPE_IMMUTABLE`. Inative o serviço por `PATCH /api/v1/itens-catalogo/{{itemId}}/situacao`, com `{"ativo":false,"versao":<versao-atual>}`; confirme que não aparece na listagem padrão e aparece com `situacao=TODOS`.
+3. **OPERADOR_FINANCEIRO — acesso negado:** autentique-se com `financeiro@meunegocio360.com.br` e envie `GET {{baseUrl}}/api/v1/categorias` e `GET {{baseUrl}}/api/v1/itens-catalogo`; ambas devem responder `403`, `code:"ACCESS_DENIED"` e `Content-Type: application/problem+json`. Confirme também o bloqueio de escrita com `POST /api/v1/categorias` e corpo `{"nome":"Sem permissão"}`; espere `403 ACCESS_DENIED`.
+
+Os três perfis de desenvolvimento (`admin@meunegocio360.com.br`, `usuario@meunegocio360.com.br` e `financeiro@meunegocio360.com.br`) e as variáveis secretas das senhas estão descritos na seção de Postman do RF-BE-002 acima. Não use `docker compose down -v` em banco com dados que devam ser preservados.
+
 ### Conceitos de DevOps (introdutórios)
 
 O foco do projeto é o desenvolvimento de software. Os conceitos de DevOps usados aqui são apenas introdutórios e já vêm prontos:
@@ -260,6 +270,8 @@ git fetch upstream
 git switch main
 git merge --ff-only upstream/main
 git push origin main
+
+
 
 # Criar a branch do requisito (o nome vem do campo "Branch" do arquivo do requisito)
 git switch -c feat/rf-be-001-login

@@ -43,14 +43,14 @@ Cada RF seguinte acrescenta o seu item ao menu; até lá, o menu mostra apenas *
 
 | Rota | Acesso | Descrição |
 | --- | --- | --- |
-| `/empresa/cadastro` | `ADMIN`, somente sem empresa ativa | Formulário do primeiro cadastro, com o título "Cadastre sua empresa". Com empresa ativa, redireciona para `/empresa`. |
+| `/empresa/cadastro` | `ADMIN`, somente sem empresa ativa | Lista paginada de empresas inativas para reativação e formulário do primeiro cadastro, com o título "Cadastre sua empresa". Com empresa ativa, redireciona para `/empresa`. |
 | `/empresa` | Autenticado | Exibe os dados da empresa ativa. `ADMIN` vê o botão **Editar**, o formulário em modo de edição e as ações **Inativar**/**Reativar**. Os demais perfis veem os dados somente em leitura. |
 | `/` e demais rotas protegidas | Autenticado **com empresa ativa** (`RequireEmpresa`) | Dentro do `AppLayout`. |
 
 ### Comportamento das guardas
 
 1. `RequireAuth` ([RF-FE-001](./RF-FE-001.md)) garante a sessão; `EmpresaProvider` consulta `GET /empresa` uma vez por sessão (TanStack Query) e expõe os estados `carregando`, `ativa`, `ausente` (`404 COMPANY_NOT_REGISTERED`) e `erro`.
-2. `RequireEmpresa` envolve as rotas de negócio. Estado `ausente`: `ADMIN` é redirecionado para `/empresa/cadastro`; os demais perfis veem a página "Aguardando o cadastro da empresa" (com orientação para falar com o administrador), sem acesso às telas de negócio. Estado `erro`: tela com **Tentar novamente**, como na restauração de sessão.
+2. `RequireEmpresa` envolve as rotas de negócio. Estado `ausente`: `ADMIN` é redirecionado para `/empresa/cadastro`, que consulta `GET /empresa/inativas` paginado para permitir reativação mesmo após recarregar a página; os demais perfis veem a página "Aguardando o cadastro da empresa" (com orientação para falar com o administrador), sem acesso às telas de negócio. Estado `erro`: tela com **Tentar novamente**, como na restauração de sessão.
 3. `RequireRole` recebe a lista de perfis permitidos. Perfil sem permissão vê uma página "Acesso negado" (`403`) com link para o início, sem revelar dados.
 4. Nenhuma tela protegida é renderizada antes de a sessão e a empresa serem resolvidas (sem *flash* de conteúdo).
 
@@ -73,13 +73,14 @@ CNPJ e telefone são enviados **somente com dígitos** (RNF-FE-28). O campo `ver
 | Situação (resposta da API) | Comportamento na interface |
 | --- | --- |
 | `GET /empresa` `404` `COMPANY_NOT_REGISTERED` | Estado `ausente` das guardas (ver acima). |
+| `GET /empresa/inativas` | Somente ADMIN carrega uma página de empresas inativas; a resposta inclui id e versão para reativação, e a tela apresenta paginação, estados de carregamento/vazio/erro e repetição. |
 | `POST` `201` | Atualiza o `EmpresaProvider`, exibe "Empresa cadastrada com sucesso." e leva o usuário ao início `/`. |
 | `PUT` `200` | Exibe "Dados da empresa atualizados." e volta ao modo de leitura. |
 | `409` `COMPANY_CNPJ_DUPLICATE` | Erro no campo CNPJ: "Já existe uma empresa cadastrada com este CNPJ." |
 | `409` `COMPANY_ALREADY_ACTIVE` | `ErrorAlert`: "Já existe uma empresa ativa. Inative-a antes de cadastrar ou reativar outra." |
 | `409` `VERSION_CONFLICT` | `ErrorAlert` com o botão **Recarregar dados** (RNF-FE-29). |
 | `400` `VALIDATION_ERROR` | Cada item de `errors[]` é ligado ao seu campo; foco no primeiro inválido. |
-| `403` | `ErrorAlert`: "Você não tem permissão para alterar os dados da empresa." |
+| `403` | `ErrorAlert`: "Você não tem permissão para alterar dados da empresa." |
 | Inativação | `ConfirmModal`: "Ao inativar a empresa, não será possível cadastrar clientes, fornecedores, produtos nem vendas até que uma empresa seja ativada." Confirmada, `PATCH` com `ativa: false`; as guardas passam ao estado `ausente`. |
 | Falha de rede / `5xx` | `ErrorAlert` genérico com **Tentar novamente**; o formulário preserva o que foi digitado. |
 
@@ -140,6 +141,13 @@ Cenário: Inativação com confirmação
   Então o modal pede confirmação e explica a consequência
   E ao cancelar nada muda
   E ao confirmar a empresa fica inativa e as telas de negócio são bloqueadas pelas guardas
+
+Cenário: Reativação depois de recarregar a página
+  Dado que não existe empresa ativa e há empresas inativas
+  Quando um ADMIN abre ou recarrega "/empresa/cadastro"
+  Então a tela lista empresas inativas com paginação
+  Quando o ADMIN reativa uma delas
+  Então a empresa ativa é atualizada e o usuário é levado ao início
 
 Cenário: Acesso negado por perfil
   Dado um usuário sem permissão para uma rota

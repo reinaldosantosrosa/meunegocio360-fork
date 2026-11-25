@@ -53,6 +53,7 @@ Nenhuma biblioteca nova. O requisito reutiliza Flyway, Spring Security, validaç
 | Operação | `ADMIN` | `OPERADOR_COMERCIAL` | `OPERADOR_FINANCEIRO` |
 | --- | :---: | :---: | :---: |
 | Consultar empresa ativa | ✔ | ✔ | ✔ |
+| Consultar empresas inativas | ✔ | ✘ (`403`) | ✘ (`403`) |
 | Cadastrar, editar, inativar e reativar | ✔ | ✘ (`403`) | ✘ (`403`) |
 
 ## Contrato da API
@@ -80,6 +81,37 @@ Retorna a **empresa ativa**. `404` com `code` `COMPANY_NOT_REGISTERED` quando n�
 }
 ```
 
+### `GET /empresa/inativas` (`ADMIN`)
+
+Lista somente empresas inativas, inclusive quando não há empresa ativa. A
+consulta é paginada conforme RNF-BE-13: `page` começa em `0` (padrão `0`) e
+`size` tem padrão `20` e máximo `100`. A ordenação é determinística por
+`atualizadoEm` decrescente e, em caso de empate, por `id` decrescente. O
+conteúdo é reduzido aos dados necessários para identificar e reativar cada
+registro:
+
+```json
+{
+  "content": [
+    {
+      "id": "0b1d6a64-6a0e-4c1c-a2f4-5f6a2d1f9a10",
+      "razaoSocial": "Comércio Exemplo Ltda",
+      "nomeFantasia": "Exemplo Informática",
+      "cnpj": "11222333000181",
+      "versao": 1
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
+}
+```
+
+Parâmetros fora dos limites (`page < 0`, `size < 1` ou `size > 100`) retornam
+`400 VALIDATION_ERROR`. Perfis diferentes de `ADMIN` recebem `403 ACCESS_DENIED`.
+Uma página sem resultados retorna `200` com `content: []`.
+
 ### `POST /empresa` (`ADMIN`)
 
 Corpo: `razaoSocial` (obrigatório, 3 a 150), `nomeFantasia` (opcional, até 150), `cnpj` (obrigatório, 14 dígitos), `email` (opcional, até 160), `telefone` (opcional, 10 ou 11 dígitos), `fusoHorario` e `moeda` (opcionais, com os padrões da RN-05). Resposta `201 Created` com `Location` e o objeto da empresa, já **ativa**.
@@ -97,11 +129,13 @@ Corpo `{ "ativa": false, "versao": 3 }`. Inativa ou reativa a empresa (RN-02 e R
 | Situação | Status | `code` |
 | --- | --- | --- |
 | Campos inválidos (CNPJ com dígito verificador errado, razão social curta etc.) | `400` | `VALIDATION_ERROR` |
+| Paginação inválida em `GET /empresa/inativas` | `400` | `VALIDATION_ERROR` |
 | Sem empresa ativa (consulta) | `404` | `COMPANY_NOT_REGISTERED` |
 | CNPJ já cadastrado | `409` | `COMPANY_CNPJ_DUPLICATE` |
 | Já existe empresa ativa | `409` | `COMPANY_ALREADY_ACTIVE` |
 | `versao` desatualizada | `409` | `VERSION_CONFLICT` |
 | Perfil sem permissão | `403` | `ACCESS_DENIED` |
+| Perfil sem permissão para consultar empresas inativas | `403` | `ACCESS_DENIED` |
 | Operação de negócio sem empresa ativa (demais RFs) | `422` | `COMPANY_NOT_ACTIVE` |
 
 ## Modelo de dados
@@ -134,6 +168,23 @@ Cenário: Primeiro acesso sem empresa cadastrada
   Dado que estou autenticado e não existe empresa ativa
   Quando envio GET /api/v1/empresa
   Então recebo 404 com code COMPANY_NOT_REGISTERED
+
+Cenário: Administrador consulta empresas inativas paginadas
+  Dado que estou autenticado como ADMIN e existem empresas inativas
+  Quando envio GET /api/v1/empresa/inativas?page=0&size=20
+  Então recebo 200 com content contendo somente empresas inativas
+  E recebo page, size, totalElements e totalPages
+  E cada item contém id, razão social, nome fantasia, CNPJ e versao
+
+Cenário: Perfil sem permissão consulta empresas inativas
+  Dado que estou autenticado como OPERADOR_COMERCIAL ou OPERADOR_FINANCEIRO
+  Quando envio GET /api/v1/empresa/inativas
+  Então recebo 403 com code ACCESS_DENIED
+
+Cenário: Paginação inválida de empresas inativas
+  Dado que estou autenticado como ADMIN
+  Quando envio GET /api/v1/empresa/inativas?page=-1 ou size=101
+  Então recebo 400 com code VALIDATION_ERROR
 
 Cenário: Administrador cadastra a empresa
   Dado que estou autenticado como ADMIN e não existe empresa ativa

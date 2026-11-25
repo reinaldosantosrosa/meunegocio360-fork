@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 @import 'bootstrap/scss/functions';
-=======
-<<<<<<< HEAD
-@use "sass:map";
-
-@import "bootstrap/scss/functions";
->>>>>>> feat/rf-be-004-cadastro-de-fornecedor
 
 $primary: #ec4e26;
+$dark: #1f1612;
+$secondary: #4a3f39;
 $body-bg: #fcf5f0;
 $card-bg: #fcf5f0;
 $body-color: #1f1612;
@@ -39,46 +34,6 @@ body,
   min-height: 100%;
 }
 
-<<<<<<< HEAD
-=======
-@import "bootstrap/scss/utilities";
-@import "bootstrap/scss/bootstrap";
-=======
-@import 'bootstrap/scss/functions';
-
-$primary: #ec4e26;
-$body-bg: #fcf5f0;
-$card-bg: #fcf5f0;
-$body-color: #1f1612;
-$color-contrast-dark: #1f1612;
-$body-secondary-color: #4a3f39;
-$border-color: #4a3f39;
-$link-color: #1f1612;
-$link-hover-color: #4a3f39;
-$link-decoration: underline;
-$danger: #b02a37;
-$success: #146c43;
-$min-contrast-ratio: 4.5;
-$focus-ring-color: $primary;
-$focus-ring-opacity: 1;
-$focus-ring-width: 0.25rem;
-$font-family-sans-serif: 'Barlow', system-ui, sans-serif;
-$headings-font-family: 'Barlow Condensed', 'Barlow', sans-serif;
-$headings-font-weight: 600;
-$font-size-base: 1rem;
-$input-btn-font-size: 1rem;
-$input-btn-padding-y: 0.625rem;
-$input-btn-padding-x: 0.875rem;
-
-@import 'bootstrap/scss/bootstrap';
-
-html,
-body,
-#root {
-  min-height: 100%;
-}
-
->>>>>>> feat/rf-be-004-cadastro-de-fornecedor
 body {
   min-width: 360px;
 }
@@ -103,6 +58,151 @@ body {
   min-height: 44px;
 }
 
+.min-touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.app-navbar {
+  --bs-navbar-color: var(--bs-body-color);
+  --bs-navbar-hover-color: var(--bs-body-color);
+  --bs-navbar-active-color: var(--bs-body-color);
+  --bs-navbar-brand-color: var(--bs-body-color);
+  --bs-navbar-brand-hover-color: var(--bs-body-color);
+  background-color: var(--bs-primary);
+  color: var(--bs-body-color);
+}
+
+.app-navbar-head {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-navbar .navbar-toggler {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: var(--bs-body-color);
+  border-color: var(--bs-body-color);
+}
+
+.app-navbar :focus-visible {
+  outline: 0.2rem solid var(--bs-body-color);
+  outline-offset: 0.15rem;
+  box-shadow: none;
+}
+
+.app-navbar-brand {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+.app-navbar-brand img {
+  display: block;
+  width: min(10rem, 42vw);
+  max-height: 2.5rem;
+  object-fit: contain;
+}
+
+.app-navbar-search {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--bs-body-color);
+}
+
+.app-navbar-links {
+  gap: 0.25rem;
+}
+
+.app-navbar-links .nav-link {
+  color: var(--bs-body-color);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.app-navbar-links .nav-link:hover,
+.app-navbar-links .nav-link:focus-visible,
+.app-navbar-links .nav-link.active {
+  color: var(--bs-body-color);
+}
+
+.app-navbar-links .nav-link:hover,
+.app-navbar-links .nav-link:focus-visible {
+  text-decoration-thickness: 0.15em;
+}
+
+.app-navbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  color: var(--bs-body-color);
+}
+
+.app-navbar-company {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.app-navbar-user {
+  overflow-wrap: anywhere;
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-page {
+  width: 100%;
+}
+
+.app-content-narrow {
+  width: 100%;
+  max-width: 54rem;
+  margin-inline: auto;
+}
+
+.app-card {
+  border-color: var(--bs-border-color);
+  background-color: var(--bs-card-bg);
+}
+
+.app-company-table {
+  --bs-table-bg: transparent;
+  margin-bottom: 0;
+  table-layout: fixed;
+}
+
+.app-company-table th {
+  width: 35%;
+}
+
+.app-company-table td {
+  overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -113,7 +213,48 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
-<<<<<<< HEAD
-=======
->>>>>>> e2c207fd89fbc28644cb875e085f1f170624a68f
->>>>>>> feat/rf-be-004-cadastro-de-fornecedor
+
+@media (min-width: 992px) {
+  .app-navbar > .container-fluid {
+    flex-wrap: nowrap;
+  }
+
+  .app-navbar-head {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    margin-right: 1.5rem;
+  }
+
+  .app-navbar-brand {
+    position: static;
+    transform: none;
+  }
+
+  .app-navbar-brand img {
+    width: 10.5rem;
+  }
+
+  .app-navbar-search {
+    display: none;
+  }
+
+  .app-navbar .navbar-toggler {
+    display: none;
+  }
+
+  .app-navbar .navbar-collapse {
+    flex-grow: 1;
+    align-items: center;
+  }
+
+  .app-navbar-meta {
+    justify-content: flex-end;
+    margin-left: auto;
+    padding: 0;
+  }
+
+  .app-navbar-company {
+    max-width: 16rem;
+  }
+}

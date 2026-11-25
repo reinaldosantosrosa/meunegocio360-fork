@@ -2,11 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AuthProvider, RequireAuth, useAuth } from './features/auth'
+import { EmpresaApplication } from './features/empresa/index.js'
 import { LoadingPage } from './shared/ui/LoadingPage.jsx'
 
 const LoginPage = lazy(() => import('./features/auth/pages/LoginPage.jsx'))
-const HomePage = lazy(() => import('./features/home/pages/HomePage.jsx'))
-const NotFoundPage = lazy(() => import('./shared/ui/NotFoundPage.jsx'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,14 +55,13 @@ function AuthenticatedRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/"
+          path="/*"
           element={
             <RequireAuth>
-              <HomePage />
+              <EmpresaApplication />
             </RequireAuth>
           }
         />
-        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )
